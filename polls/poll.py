@@ -7,7 +7,7 @@ from .option import Option
 
 
 class Poll:
-    type = "default"
+    type = "default_poll"
 
     @staticmethod
     def generate_code():
@@ -27,7 +27,7 @@ class Poll:
 
     @classmethod
     def create_new(cls, type):
-        cls.create(
+        return cls.create(
             type,
             question="",
             options=[],
@@ -67,6 +67,9 @@ class Poll:
         self.is_closed = is_closed 
         self.is_anonymous = is_anonymous
         self.create_time = create_time
+
+    def add_option(self, text):
+        self.options.append(Option(text))
 
     def __str__(self):
         text = self.question + "\n\n"

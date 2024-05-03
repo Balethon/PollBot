@@ -11,7 +11,7 @@ with open(f"{__path__}/polls.json") as polls_json:
     polls = load(polls_json)
 
 
-class DataBase:
+class Database:
     
     @staticmethod
     def get_polls():

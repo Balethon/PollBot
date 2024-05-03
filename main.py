@@ -1,7 +1,6 @@
 from balethon import Client
 from balethon.conditions import regex, at_state, text
 from balethon.objects import Message, CallbackQuery, User
-from balethon.event_handlers import MessageHandler
 from balethon.states import StateMachine
 
 import config
@@ -10,15 +9,10 @@ import keyboards
 from polls import Poll
 
 bot = Client(config.TOKEN)
+
 incomplete_polls = {}
 
 User.state_machine = StateMachine("user_states.db")
-
-
-class UserHandler(MessageHandler):
-    async def __call__(self, client, event):
-        poll = incomplete_polls[event.author.id]
-        return await super().__call__(client=client, message=event, poll=poll)
 
 
 @bot.on_command()
@@ -31,7 +25,7 @@ async def create_poll(callback_query: CallbackQuery):
     await callback_query.answer(texts.select_poll_type, keyboards.poll_types)
 
 
-@bot.on_callback_query(regex("simple_poll|multiple_answers_poll|quiz_poll"))
+@bot.on_callback_query(regex("default_poll|multiple_answers_poll|quiz_poll"))
 async def poll_types(callback_query: CallbackQuery):
     await callback_query.message.edit_text(texts.select_poll_mode, keyboards.poll_modes)
     incomplete_polls[callback_query.author.id] = Poll.create_new(callback_query.data)
@@ -46,11 +40,10 @@ async def poll_modes(callback_query: CallbackQuery):
     callback_query.author.set_state("QUESTION")
 
 
-@bot.add_event_handler(
-    UserHandler,
-    condition=at_state("QUESTION") & text #& private
-)
-async def question(message: Message, poll):
+@bot.on_message(at_state("QUESTION") & text)
+async def question(message: Message):
+    poll = incomplete_polls[message.author.id]
+
     if len(message.text) > 255:
         return await message.reply(texts.question_too_long)
 
@@ -60,15 +53,14 @@ async def question(message: Message, poll):
     message.author.set_state("OPTIONS")
 
 
-@bot.add_event_handler(
-    UserHandler,
-    condition=at_state("OPTIONS") & text #& private
-)
-async def options(message: Message, poll):
+@bot.on_message(condition=at_state("OPTIONS") & text)
+async def options(message: Message):
+    poll = incomplete_polls[message.author.id]
+
     if len(message.text) > 70:
         return await message.reply(texts.option_too_long)
 
-    poll.options.append(message.text)
+    poll.add_option(message.text)
 
     if len(poll.options) >= 2:
         options = "\n".join(f"• _{option}_" for option in poll.options)
@@ -93,7 +85,6 @@ async def complete(callback_query: CallbackQuery):
         await callback_query.answer(texts.select_correct_option, poll.to_inline_keyboard("correct"))
         return
 
-    poll = incomplete_polls[callback_query.author.id]
     await callback_query.answer(str(poll), poll.to_inline_keyboard())
     callback_query.author.del_state()
 

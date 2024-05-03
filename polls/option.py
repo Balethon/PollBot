@@ -3,10 +3,10 @@ class Option:
     def __init__(
             self,
             text: str,
-            voters: list
+            voters: list = None
     ):
         self.text = " ".join(text.split())
-        self.voters = voters
+        self.voters = voters or []
 
     @property
     def voters_count(self):

@@ -2,7 +2,7 @@ from .poll import Poll
 
 
 class MultipleAnswersPoll(Poll):
-    type = "multiple_answers"
+    type = "multiple_answers_poll"
 
     def vote(self, user_id, option_index):
         if self.is_closed:

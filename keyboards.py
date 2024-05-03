@@ -7,9 +7,9 @@ start = InlineKeyboard(
 )
 
 poll_types = InlineKeyboard(
-    [("نظرسنجی عادی", "simple_poll")],
+    [("نظرسنجی عادی", "default_poll")],
     [("نظرسنجی چند جوابی", "multiple_answers_poll")],
-    [("آزمون", "quiz")]
+    [("آزمون", "quiz_poll")]
 )
 
 poll_modes = InlineKeyboard(
