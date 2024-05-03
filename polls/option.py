@@ -13,5 +13,5 @@ class Option:
         return len(self.voters)
 
     def __str__(self):
-        return f"{self.text}\n▫️ _%{self.percentage} | {self.voters} رأی_\n\n".format_map(self.__dict__)
+        return f"{self.text} | {self.voters})"
  

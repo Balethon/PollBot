@@ -1,6 +1,8 @@
 from secrets import token_hex
 from time import time
 
+from balethon.objects import InlineKeyboard
+
 from .option import Option
 from .statistics import Statistics
 
@@ -74,7 +76,7 @@ class Poll:
                 percentage = round((option.voters_count / self.voters_count) * 100)
             except ZeroDivisionError:
                 percentage = 0
-            text += str(Option(option, i, percentage, option.voters_count))
+            text += str(f"{i}-{option}: {percentage} ({option.voters_count})")
         text += str(Statistics(**self.__dict__, total_voter_count=self.voters_count))
         return text
 
@@ -86,6 +88,17 @@ class Poll:
             option.voters.remove(user_id)
             return False
         if user_id in self.voters:
-            pass
+            self.get_vote(user_id).voters.remove(user_id)
         option.voters.append(user_id)
         return True
+
+    def get_vote(self, user_id):
+        for option in self.options:
+            if user_id in option.voters:
+                return option
+
+    def to_inline_keyboard(self, prefix="vote"):
+        inline_keyboard = InlineKeyboard()
+        for i, option in enumerate(self.options):
+            inline_keyboard.add_row((option.text, f"{prefix}.{self.code}.{i}"))
+        return inline_keyboard

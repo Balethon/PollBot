@@ -6,7 +6,7 @@ class QuizPoll(Poll):
 
     def vote(self, user_id, option_index):
         if user_id in self.voters:
-            return False
+            return None
         return super().vote(user_id, option_index)
 
     def __init__(
