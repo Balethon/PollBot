@@ -2,7 +2,7 @@ from balethon.objects import ReplyKeyboard, InlineKeyboard
 
 start = InlineKeyboard(
     [("📊 ایجاد نظرسنجی", "create_poll")],
-    #[("📕 راهنمایی", "guide"), ("👤 پشتیبانی", "support")],
+    # [("📕 راهنمایی", "guide"), ("👤 پشتیبانی", "support")]
     # [("حمایت از ما", "support_us")]
 )
 
