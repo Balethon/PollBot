@@ -4,7 +4,6 @@ from time import time
 from balethon.objects import InlineKeyboard
 
 from .option import Option
-from .statistics import Statistics
 
 
 class Poll:
@@ -77,7 +76,6 @@ class Poll:
             except ZeroDivisionError:
                 percentage = 0
             text += str(f"{i}-{option}: {percentage} ({option.voters_count})")
-        text += str(Statistics(**self.__dict__, total_voter_count=self.voters_count))
         return text
 
     def vote(self, user_id, option_index):
