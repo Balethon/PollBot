@@ -1,4 +1,4 @@
-from balethon.objects import ReplyKeyboard, InlineKeyboard
+from balethon.objects import InlineKeyboard
 
 start = InlineKeyboard(
     [("📊 ایجاد نظرسنجی", "create_poll")],
@@ -14,7 +14,7 @@ poll_types = InlineKeyboard(
 
 poll_modes = InlineKeyboard(
     [("ناشناس", "anonymous"), ("عمومی", "public")],
-    # 1    [("لغو", "cancel")]
+    # [("لغو", "cancel")]
 )
 
 cancel = InlineKeyboard(
