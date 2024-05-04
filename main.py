@@ -47,9 +47,9 @@ async def question(message: Message):
     if len(message.text) > 255:
         return await message.reply(texts.question_too_long)
 
-    poll.give_question = message.text
+    poll.question = " ".join(message.text.split())
     await message.reply(texts.give_first_option)
-    
+
     message.author.set_state("OPTIONS")
 
 
@@ -63,7 +63,7 @@ async def options(message: Message):
     poll.add_option(message.text)
 
     if len(poll.options) >= 2:
-        options = "\n".join(f"• _{option}_" for option in poll.options)
+        options = "\n".join(f"• _{option.text}_" for option in poll.options)
         await message.reply(texts.more_options.format(options=options), keyboards.complete_poll)
         message.author.set_state("SELECTING")
         return  # await message.delete()

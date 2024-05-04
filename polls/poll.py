@@ -4,6 +4,7 @@ from time import time
 from balethon.objects import InlineKeyboard
 
 from .option import Option
+import texts
 
 
 class Poll:
@@ -60,7 +61,7 @@ class Poll:
             create_time: int,
     ):
         self.type = self.type
-        self.question = "*" + " ".join(question.split()) + "*"
+        self.question = " ".join(question.split())
         self.options = options
         self.code = code
         self.creator = creator
@@ -71,15 +72,21 @@ class Poll:
     def add_option(self, text):
         self.options.append(Option(text))
 
+    def get_option_percentage(self, index):
+        option = self.options[index]
+        try:
+            return round((option.voters_count / self.voters_count) * 100)
+        except ZeroDivisionError:
+            return 0
+
     def __str__(self):
-        text = self.question + "\n\n"
-        for i, option in enumerate(self.options):
-            try:
-                percentage = round((option.voters_count / self.voters_count) * 100)
-            except ZeroDivisionError:
-                percentage = 0
-            text += str(f"{i}-{option}: {percentage} ({option.voters_count})")
-        return text
+        options = "\n\n".join(option.to_poll(i + 1, self.get_option_percentage(i)) for i, option in enumerate(self.options))
+        return texts.poll.format(
+            question=self.question,
+            options=options,
+            voters_count=self.voters_count,
+            code=self.code
+        )
 
     def vote(self, user_id, option_index):
         if self.is_closed:

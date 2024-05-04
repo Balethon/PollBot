@@ -1,3 +1,6 @@
+import texts
+
+
 class Option:
     
     def __init__(
@@ -13,5 +16,12 @@ class Option:
         return len(self.voters)
 
     def __str__(self):
-        return f"{self.text} | {self.voters})"
- 
+        return f"{self.text} | {self.voters_count}"
+
+    def to_poll(self, i, percentage):
+        return texts.option.format(
+            i=i,
+            text=self.text,
+            percentage=percentage,
+            voters_count=self.voters_count
+        )
