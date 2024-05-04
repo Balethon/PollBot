@@ -6,7 +6,8 @@ from balethon.states import StateMachine
 import config
 import texts
 import keyboards
-from polls import Poll
+from database import Database
+from polls import Poll, QuizPoll
 
 bot = Client(config.TOKEN)
 
@@ -81,9 +82,11 @@ async def new_option(callback_query: CallbackQuery):
 async def complete(callback_query: CallbackQuery):
     poll = incomplete_polls[callback_query.author.id]
 
-    if poll.type == "quiz" and poll.correct_option is None:
+    if isinstance(poll, QuizPoll) and poll.correct_option is None:
         await callback_query.answer(texts.select_correct_option, poll.to_inline_keyboard("correct"))
         return
+
+    Database.save_poll(poll)
 
     await callback_query.answer(str(poll), poll.to_inline_keyboard())
     callback_query.author.del_state()
@@ -93,6 +96,19 @@ async def complete(callback_query: CallbackQuery):
 async def cancel(callback_query: CallbackQuery):
     callback_query.author.del_state()
     await callback_query.message.delete()
+
+
+@bot.on_callback_query(regex("^vote"))
+async def vote(callback_query: CallbackQuery):
+    _, code, option_index = callback_query.data.split(".")
+    option_index = int(option_index)
+
+    poll = Database.load_poll(code)
+
+    poll.vote(callback_query.author.id, option_index)
+    Database.save_poll(poll)
+
+    await callback_query.message.edit_text(str(poll), poll.to_inline_keyboard())
 
 
 if __name__ == "__main__":

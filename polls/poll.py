@@ -1,5 +1,6 @@
 from secrets import token_hex
 from time import time
+from copy import deepcopy
 
 from balethon.objects import InlineKeyboard
 
@@ -53,7 +54,7 @@ class Poll:
     def __init__(
             self,
             question: str,
-            options: list[Option],
+            options: list,
             code: str,
             creator: str,
             is_closed: bool,
@@ -62,7 +63,7 @@ class Poll:
     ):
         self.type = self.type
         self.question = " ".join(question.split())
-        self.options = options
+        self.options = [option if isinstance(option, Option) else Option(**option) for option in options]
         self.code = code
         self.creator = creator
         self.is_closed = is_closed 
@@ -110,3 +111,8 @@ class Poll:
         for i, option in enumerate(self.options):
             inline_keyboard.add_row((option.text, f"{prefix}.{self.code}.{i}"))
         return inline_keyboard
+
+    def to_dict(self):
+        poll = deepcopy(self)
+        poll.options = [option.to_dict() for option in poll.options]
+        return poll.__dict__

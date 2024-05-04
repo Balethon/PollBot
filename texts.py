@@ -7,7 +7,7 @@ poll = """
 _کد نظرسنجی: {code}_
 
 📊 *نظرسنجی ساخته شده با: [بات نظرسنجی](ble.ir/VoterBot)*
-⚡ *قدرت گرفته از: [بلتون](balethon.ir)*
+⚡ *قدرت گرفته از: [بلتون](balethon.ir/posts/about)*
 """.strip()
 
 option = """
@@ -20,7 +20,7 @@ start = """
 
 📊 با استفاده از این بازو میتوانید *نظرسنجی* ایجاد کنید و داخل کانال یا گروهتان ارسال کنید.
 
-🔺 *این بازو از* [Balethon](https://Balethon.ir) *قدرت گرفته است.*
+🔺 *این بازو از* [Balethon](balethon.ir/posts/about) *قدرت گرفته است.*
 """.strip()
 
 select_poll_type = """

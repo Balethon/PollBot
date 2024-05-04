@@ -25,3 +25,6 @@ class Option:
             percentage=percentage,
             voters_count=self.voters_count
         )
+
+    def to_dict(self):
+        return self.__dict__
