@@ -10,6 +10,7 @@ import texts
 
 class Poll:
     type = "default_poll"
+    type_name = texts.default_poll
 
     @staticmethod
     def generate_code():
@@ -86,6 +87,7 @@ class Poll:
             question=self.question,
             options=options,
             voters_count=self.voters_count,
+            type_name=self.type_name,
             code=self.code
         )
 

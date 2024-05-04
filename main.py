@@ -21,6 +21,12 @@ async def start(*, message: Message):
     await message.reply(texts.start.format(user=message.author), keyboards.start)
 
 
+@bot.on_command()
+async def start(poll_code, *, message: Message):
+    poll = Database.load_poll(poll_code)
+    await message.reply(str(poll), poll.to_inline_keyboard())
+
+
 @bot.on_callback_query(regex("^create_poll$"))
 async def create_poll(callback_query: CallbackQuery):
     await callback_query.answer(texts.select_poll_type, keyboards.poll_types)
@@ -67,7 +73,7 @@ async def options(message: Message):
         options = "\n".join(f"• _{option.text}_" for option in poll.options)
         await message.reply(texts.more_options.format(options=options), keyboards.complete_poll)
         message.author.set_state("SELECTING")
-        return  # await message.delete()
+        return
 
     await message.reply(texts.give_second_option)
 

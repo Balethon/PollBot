@@ -1,8 +1,10 @@
 from .poll import Poll
+import texts
 
 
 class MultipleAnswersPoll(Poll):
     type = "multiple_answers_poll"
+    type_name = texts.multiple_answers_poll
 
     def vote(self, user_id, option_index):
         if self.is_closed:

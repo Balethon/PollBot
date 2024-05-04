@@ -1,8 +1,10 @@
 from .poll import Poll
+import texts
 
 
 class QuizPoll(Poll):
     type = "quiz_poll"
+    type_name = texts.quiz_poll
 
     def vote(self, user_id, option_index):
         if user_id in self.voters:
