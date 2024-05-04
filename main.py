@@ -88,7 +88,7 @@ async def complete(callback_query: CallbackQuery):
 
     Database.save_poll(poll)
 
-    await callback_query.answer(str(poll), poll.to_inline_keyboard())
+    await callback_query.message.edit_text(str(poll), poll.to_inline_keyboard())
     callback_query.author.del_state()
 
 
@@ -96,6 +96,20 @@ async def complete(callback_query: CallbackQuery):
 async def cancel(callback_query: CallbackQuery):
     callback_query.author.del_state()
     await callback_query.message.delete()
+
+
+@bot.on_callback_query(regex("^correct"))
+async def vote(callback_query: CallbackQuery):
+    poll = incomplete_polls[callback_query.author.id]
+
+    _, __, option_index = callback_query.data.split(".")
+    option_index = int(option_index)
+
+    poll.correct_option = option_index
+    Database.save_poll(poll)
+
+    await callback_query.message.edit_text(str(poll), poll.to_inline_keyboard())
+    callback_query.author.del_state()
 
 
 @bot.on_callback_query(regex("^vote"))
