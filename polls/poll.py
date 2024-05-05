@@ -43,13 +43,13 @@ class Poll:
 
     @property
     def voters(self):
-        voters = set()
+        voters = []
         for option in self.options:
-            voters |= set(option.voters)
+            voters.extend(option.voters)
         return voters
 
     @property
-    def voters_count(self):
+    def votes_count(self):
         return len(self.voters)
 
     def __init__(
@@ -77,7 +77,7 @@ class Poll:
     def get_option_percentage(self, index):
         option = self.options[index]
         try:
-            return round((option.voters_count / self.voters_count) * 100)
+            return round((option.voters_count / self.votes_count) * 100)
         except ZeroDivisionError:
             return 0
 
@@ -86,7 +86,7 @@ class Poll:
         return texts.poll.format(
             question=self.question,
             options=options,
-            voters_count=self.voters_count,
+            votes_count=self.votes_count,
             type_name=self.type_name,
             code=self.code
         )

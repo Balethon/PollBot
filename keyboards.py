@@ -3,7 +3,7 @@ from balethon.objects import InlineKeyboard
 start = InlineKeyboard(
     [("📊 ایجاد نظرسنجی", "create_poll")],
     [("📕 راهنمایی", "help"), ("👤 پشتیبانی", "support")],
-    [("حمایت از ما", "support_us")]
+    [("تعرفه تبلیغات", "ads")]
 )
 
 poll_types = InlineKeyboard(

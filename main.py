@@ -56,6 +56,11 @@ async def support(callback_query: CallbackQuery):
     await callback_query.answer(texts.support)
 
 
+@bot.on_callback_query(regex("^ads$"))
+async def ads(callback_query: CallbackQuery):
+    await callback_query.answer(texts.ads)
+
+
 @bot.on_callback_query(regex("default_poll|multiple_answers_poll|quiz_poll"))
 async def poll_types(callback_query: CallbackQuery):
     await callback_query.message.edit_text(texts.select_poll_mode, keyboards.poll_modes)
