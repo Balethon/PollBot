@@ -2,8 +2,8 @@ from balethon.objects import InlineKeyboard
 
 start = InlineKeyboard(
     [("📊 ایجاد نظرسنجی", "create_poll")],
-    # [("📕 راهنمایی", "guide"), ("👤 پشتیبانی", "support")]
-    # [("حمایت از ما", "support_us")]
+    [("📕 راهنمایی", "help"), ("👤 پشتیبانی", "support")],
+    [("حمایت از ما", "support_us")]
 )
 
 poll_types = InlineKeyboard(

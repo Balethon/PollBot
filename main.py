@@ -27,9 +27,33 @@ async def start(poll_code, *, message: Message):
     await message.reply(str(poll), poll.to_inline_keyboard())
 
 
+@bot.on_command()
+async def help(topic=None, *, message: Message):
+    if topic == "invite_to_chat":
+        await message.reply_video(config.INVITE_TO_CHAT_FILE_ID, caption=texts.invite_to_chat)
+    elif topic == "create_poll":
+        await message.reply_video(config.CREATE_POLL_FILE_ID, caption=texts.create_poll)
+    elif topic == "access":
+        await message.reply_photo(config.ACCESS_FILE_ID, caption=texts.access)
+    elif topic == "poll_link":
+        await message.reply(texts.poll_link)
+    elif topic == "limitations":
+        await message.reply(texts.limitations)
+
+
 @bot.on_callback_query(regex("^create_poll$"))
 async def create_poll(callback_query: CallbackQuery):
     await callback_query.answer(texts.select_poll_type, keyboards.poll_types)
+
+
+@bot.on_callback_query(regex("^help$"))
+async def help(callback_query: CallbackQuery):
+    await callback_query.answer(texts.help)
+
+
+@bot.on_callback_query(regex("^support$"))
+async def support(callback_query: CallbackQuery):
+    await callback_query.answer(texts.support)
 
 
 @bot.on_callback_query(regex("default_poll|multiple_answers_poll|quiz_poll"))
