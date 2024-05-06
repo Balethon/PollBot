@@ -16,10 +16,6 @@ class Poll:
     def generate_code():
         return token_hex(5)
 
-    @staticmethod
-    def get_time():
-        return round(time())
-
     @classmethod
     def create(cls, type, *args, **kwargs):
         if type == cls.type:
@@ -35,10 +31,10 @@ class Poll:
             question="",
             options=[],
             code=cls.generate_code(),
-            creator="",
+            creator=0,
             is_closed=False,
             is_anonymous=False,
-            create_time=cls.get_time()
+            create_time=0
         )
 
     @property

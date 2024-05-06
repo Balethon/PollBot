@@ -1,5 +1,7 @@
+from time import time
+
 from balethon import Client
-from balethon.conditions import regex, at_state, text
+from balethon.conditions import regex, at_state, text, private
 from balethon.objects import Message, CallbackQuery, User
 from balethon.states import StateMachine
 
@@ -16,21 +18,22 @@ incomplete_polls = {}
 User.state_machine = StateMachine("user_states.db")
 
 
-@bot.on_command()
-async def start(*, message: Message):
-    await message.reply(texts.start.format(user=message.author), keyboards.start)
-
-
-@bot.on_command()
-async def start(poll_code, *, message: Message):
+@bot.on_command(private)
+async def start(poll_code=None, *, message: Message):
+    if poll_code is None:
+        return await message.reply(texts.start.format(user=message.author), keyboards.start)
     poll = Database.load_poll(poll_code)
     await message.reply(str(poll), poll.to_inline_keyboard())
 
 
-@bot.on_command()
+@bot.on_command(private)
 async def help(topic=None, *, message: Message):
     if topic == "invite_to_chat":
         await message.reply_video(config.INVITE_TO_CHAT_FILE_ID, caption=texts.invite_to_chat)
+    elif topic == "poll_types":
+        await message.reply(texts.poll_types)
+    elif topic == "poll_modes":
+        await message.reply(texts.poll_modes)
     elif topic == "create_poll":
         await message.reply_video(config.CREATE_POLL_FILE_ID, caption=texts.create_poll)
     elif topic == "access":
@@ -41,34 +44,35 @@ async def help(topic=None, *, message: Message):
         await message.reply(texts.limitations)
 
 
-@bot.on_callback_query(regex("^create_poll$"))
+@bot.on_callback_query(private & regex("^create_poll$"))
 async def create_poll(callback_query: CallbackQuery):
     await callback_query.answer(texts.select_poll_type, keyboards.poll_types)
 
 
-@bot.on_callback_query(regex("^help$"))
+@bot.on_callback_query(private & regex("^help$"))
 async def help(callback_query: CallbackQuery):
     await callback_query.answer(texts.help)
 
 
-@bot.on_callback_query(regex("^support$"))
+@bot.on_callback_query(private & regex("^support$"))
 async def support(callback_query: CallbackQuery):
     await callback_query.answer(texts.support)
 
 
-@bot.on_callback_query(regex("^ads$"))
+@bot.on_callback_query(private & regex("^ads$"))
 async def ads(callback_query: CallbackQuery):
     await callback_query.answer(texts.ads)
 
 
-@bot.on_callback_query(regex("default_poll|multiple_answers_poll|quiz_poll"))
+@bot.on_callback_query(private & regex("default_poll|multiple_answers_poll|quiz_poll"))
 async def poll_types(callback_query: CallbackQuery):
     await callback_query.message.edit_text(texts.select_poll_mode, keyboards.poll_modes)
     incomplete_polls[callback_query.author.id] = Poll.create_new(callback_query.data)
+    incomplete_polls[callback_query.author.id].creator = callback_query.author.id
     callback_query.author.set_state("MODE")
 
 
-@bot.on_callback_query(at_state("MODE") & regex("public|anonymous"))
+@bot.on_callback_query(private & at_state("MODE") & regex("public|anonymous"))
 async def poll_modes(callback_query: CallbackQuery):
     mode = True if callback_query.data == "anonymous" else False
     incomplete_polls[callback_query.author.id].is_anonymous = mode
@@ -76,7 +80,7 @@ async def poll_modes(callback_query: CallbackQuery):
     callback_query.author.set_state("QUESTION")
 
 
-@bot.on_message(at_state("QUESTION") & text)
+@bot.on_message(private & at_state("QUESTION") & text)
 async def question(message: Message):
     poll = incomplete_polls[message.author.id]
 
@@ -89,7 +93,7 @@ async def question(message: Message):
     message.author.set_state("OPTIONS")
 
 
-@bot.on_message(condition=at_state("OPTIONS") & text)
+@bot.on_message(private & at_state("OPTIONS") & text)
 async def options(message: Message):
     poll = incomplete_polls[message.author.id]
 
@@ -107,13 +111,13 @@ async def options(message: Message):
     await message.reply(texts.give_second_option)
 
 
-@bot.on_callback_query(at_state("SELECTING") & regex("^new_option$"))
+@bot.on_callback_query(private & at_state("SELECTING") & regex("^new_option$"))
 async def new_option(callback_query: CallbackQuery):
     await callback_query.message.edit_text(texts.give_new_option)
     callback_query.author.set_state("OPTIONS")
 
 
-@bot.on_callback_query(at_state("SELECTING") & regex("^complete_poll$"))
+@bot.on_callback_query(private & at_state("SELECTING") & regex("^complete_poll$"))
 async def complete(callback_query: CallbackQuery):
     poll = incomplete_polls[callback_query.author.id]
 
@@ -121,33 +125,35 @@ async def complete(callback_query: CallbackQuery):
         await callback_query.answer(texts.select_correct_option, poll.to_inline_keyboard("correct"))
         return
 
+    poll.create_time = round(time())
     Database.save_poll(poll)
 
     await callback_query.message.edit_text(str(poll), poll.to_inline_keyboard())
     callback_query.author.del_state()
 
 
-@bot.on_callback_query(regex("^cancel$") & ~at_state(None))
+@bot.on_callback_query(private & regex("^cancel$") & ~at_state(None))
 async def cancel(callback_query: CallbackQuery):
     callback_query.author.del_state()
     await callback_query.message.delete()
 
 
-@bot.on_callback_query(regex("^correct"))
-async def vote(callback_query: CallbackQuery):
+@bot.on_callback_query(private & regex("^correct"))
+async def correct(callback_query: CallbackQuery):
     poll = incomplete_polls[callback_query.author.id]
 
     _, __, option_index = callback_query.data.split(".")
     option_index = int(option_index)
 
     poll.correct_option = option_index
+    poll.create_time = round(time())
     Database.save_poll(poll)
 
     await callback_query.message.edit_text(str(poll), poll.to_inline_keyboard())
     callback_query.author.del_state()
 
 
-@bot.on_callback_query(regex("^vote"))
+@bot.on_callback_query(private & regex("^vote"))
 async def vote(callback_query: CallbackQuery):
     _, code, option_index = callback_query.data.split(".")
     option_index = int(option_index)

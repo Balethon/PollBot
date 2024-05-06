@@ -13,7 +13,7 @@ class QuizPoll(Poll):
 
     def __init__(
             self,
-            correct_option: int = None,
+            correct_option: int = 0,
             explanation: str = "",
             *args,
             **kwargs

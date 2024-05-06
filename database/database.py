@@ -3,9 +3,7 @@ from os import path
 
 from polls import Poll
 
-
 __path__ = path.dirname(__file__)
-
 
 with open(path.join(__path__, "polls.json"), encoding="utf-8") as polls_json:
     polls = load(polls_json)
