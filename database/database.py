@@ -12,8 +12,12 @@ with open(path.join(__path__, "polls.json"), encoding="utf-8") as polls_json:
 class Database:
 
     @staticmethod
-    def get_polls():
-        return polls
+    def get_polls(user_id):
+        user_polls = []
+        for poll in polls.values():
+            if poll["creator"] == user_id:
+                user_polls.append(Poll.create(**poll))
+        return user_polls
 
     @staticmethod
     def save_poll(poll):
