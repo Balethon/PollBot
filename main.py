@@ -1,7 +1,7 @@
 from time import time
 
 from balethon import Client
-from balethon.conditions import regex, at_state, text, private
+from balethon.conditions import regex, at_state, text, private, group
 from balethon.objects import Message, CallbackQuery, User, ReplyKeyboard, ReplyKeyboardRemove
 from balethon.states import StateMachine
 
@@ -18,20 +18,39 @@ incomplete_polls = {}
 User.state_machine = StateMachine("user_states.db")
 
 
-@bot.on_command(private)
-async def start(*, message: Message):
-    await message.reply(texts.start.format(user=message.author), keyboards.start)
-    if message.author.get_state():
-        message.author.del_state()
+@bot.on_message(private, chain="amar")
+def private_user(message: Message):
+    pass
+
+
+@bot.on_message(group, chain="amar")
+def group_user(message: Message):
+    pass
+
+
+@bot.on_callback_query(regex("^vote"), chain="amar")
+def voter(callback_query: CallbackQuery):
+    pass
 
 
 @bot.on_command()
-async def start(poll_code, *, message: Message):
-    poll = Database.load_poll(poll_code)
-    await message.reply(str(poll), poll.to_inline_keyboard())
+async def start(poll_code=None, *, message: Message):
+    if poll_code is not None:
+        poll = Database.load_poll(poll_code)
+        if poll.creator != message.author.id and poll.is_anonymous:
+            return
+        await message.reply(str(poll), poll.to_inline_keyboard())
+
+    elif message.chat.type == "private":
+        await message.reply(texts.start.format(user=message.author), keyboards.start)
+        if message.author.get_state():
+            message.author.del_state()
+
+    elif message.chat.type == "group":
+        await message.reply(texts.start_group.format(user=message.author))
 
 
-@bot.on_command(private)
+@bot.on_command()
 async def help(topic=None, *, message: Message):
     if topic is None:
         await message.reply(texts.help)
@@ -61,8 +80,11 @@ async def create_poll(message: Message):
 async def my_polls(message: Message):
     polls = Database.get_polls(message.author.id)
 
+    if not polls:
+        return await message.reply(texts.no_polls)
+
     reply_markup = ReplyKeyboard(*[[poll.code] for poll in polls])
-    reply_markup.add_row("بازگشت")
+    reply_markup.add_row("برگشت")
 
     message.author.set_state("MY_POLLS")
     await message.reply(texts.my_polls, reply_markup)
@@ -70,7 +92,14 @@ async def my_polls(message: Message):
 
 @bot.on_message(private & at_state("MY_POLLS"))
 async def select_poll(message: Message):
-    pass
+    if message.text == "برگشت":
+        await start(message=message)
+        return
+
+    polls = Database.get_polls(message.author.id)
+    if message.text in (poll.code for poll in polls):
+        poll, = [poll for poll in polls if poll.code == message.text]
+        await message.reply(str(poll), poll.to_inline_keyboard())
 
 
 @bot.on_message(private & regex("راهنمایی"))
@@ -113,14 +142,14 @@ async def quiz_poll(message: Message):
 
 
 @bot.on_message(private & at_state("POLL_MODE") & regex("عمومی"))
-async def poll_modes(message: Message):
+async def public_poll(message: Message):
     incomplete_polls[message.author.id].is_anonymous = "public"
     message.author.set_state("QUESTION")
     await message.reply(texts.give_question, ReplyKeyboardRemove())
 
 
 @bot.on_message(private & at_state("POLL_MODE") & regex("خصوصی"))
-async def poll_modes(message: Message):
+async def anonymous_poll(message: Message):
     incomplete_polls[message.author.id].is_anonymous = "anonymous"
     message.author.set_state("QUESTION")
     await message.reply(texts.give_question, ReplyKeyboardRemove())
@@ -145,20 +174,23 @@ async def options(message: Message):
     if len(message.text) > 70:
         return await message.reply(texts.option_too_long)
 
-    if len(poll.options) >= 2:
+    if len(poll.options) >= 1:
         if message.text == "تکمیل نظرسنجی ☑️":
             if isinstance(poll, QuizPoll):
                 message.author.set_state("SELECTING_CORRECT_OPTION")
-                await message.reply(texts.select_correct_option, poll.to_inline_keyboard("correct"))
+                await message.reply(texts.select_correct_option, ReplyKeyboardRemove())
+                await message.reply("گزینه ها", poll.to_inline_keyboard("correct"))
                 return
 
             poll.create_time = round(time())
             Database.save_poll(poll)
 
             await message.reply(str(poll), poll.to_inline_keyboard())
+            await message.reply(f"/start {poll.code}", keyboards.start)
             message.author.del_state()
             return
 
+        poll.add_option(message.text)
         options = "\n".join(f"• _{option.text}_" for option in poll.options)
         await message.reply(texts.more_options.format(options=options), keyboards.complete_poll)
         return
@@ -166,6 +198,18 @@ async def options(message: Message):
     poll.add_option(message.text)
 
     await message.reply(texts.give_second_option)
+
+
+@bot.on_message(private & at_state("EXPLANATION"))
+async def explanation(message: Message):
+    poll = incomplete_polls[message.author.id]
+
+    poll.explanation = message.text
+    poll.create_time = round(time())
+    Database.save_poll(poll)
+
+    await message.reply(str(poll), poll.to_inline_keyboard())
+    message.author.del_state()
 
 
 @bot.on_callback_query(private & regex("^correct") & at_state("SELECTING_CORRECT_OPTION"))
@@ -179,18 +223,6 @@ async def correct(callback_query: CallbackQuery):
 
     callback_query.author.set_state("EXPLANATION")
     await callback_query.message.edit_text(texts.give_explanation)
-
-
-@bot.on_message(private & at_state("EXPLANATION"))
-async def explanation(message: Message):
-    poll = incomplete_polls[message.author.id]
-
-    poll.explanation = message.text
-    poll.create_time = round(time())
-    Database.save_poll(poll)
-
-    await message.reply(str(poll), poll.to_inline_keyboard())
-    message.author.del_state()
 
 
 @bot.on_callback_query(regex("^vote"))

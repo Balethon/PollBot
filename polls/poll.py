@@ -45,6 +45,10 @@ class Poll:
         return voters
 
     @property
+    def voters_count(self):
+        return len(set(self.voters))
+
+    @property
     def votes_count(self):
         return len(self.voters)
 

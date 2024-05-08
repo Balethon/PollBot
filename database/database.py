@@ -1,5 +1,8 @@
 from json import load, dump
 from os import path
+from sqlite3 import connect
+
+from balethon.objects import User
 
 from polls import Poll
 
@@ -10,6 +13,14 @@ with open(path.join(__path__, "polls.json"), encoding="utf-8") as polls_json:
 
 
 class Database:
+    connection = connect("users.db")
+
+    @classmethod
+    def create_table(cls):
+        sql = """CREATE TABLE IF NOT EXISTS users(user_id INTEGER PRIMARY KEY, signup_time INTEGER, first_name TEXT)"""
+        cursor = cls.connection.cursor()
+        cursor.execute(sql)
+        cls.connection.commit()
 
     @staticmethod
     def get_polls(user_id):
@@ -28,3 +39,42 @@ class Database:
     @staticmethod
     def load_poll(code):
         return Poll.create(**polls[code])
+
+    @classmethod
+    def insert_user(cls, user):
+        sql = """INSERT INTO users VALUES (?, ?, ?)"""
+        cursor = cls.connection.cursor()
+        cursor.execute(sql, (user.id, user.first_name, user["signup_date"]))
+        cls.connection.commit()
+
+    @classmethod
+    def update_user(cls, user):
+        sql = """UPDATE users SET first_name = ?, signup_date = ? WHERE user_id = ?"""
+        cursor = cls.connection.cursor()
+        cursor.execute(sql, (user.first_name, user["signup_date"], user.id))
+        cls.connection.commit()
+
+    @classmethod
+    def save_user(cls, user):
+        result = cls.select_user(user.id)
+        if result is None:
+            cls.insert_user(user)
+        else:
+            cls.update_user(user)
+
+    @classmethod
+    def select_user(cls, user_id):
+        sql = """SELECT * FROM users WHERE user_id = ?"""
+        cursor = cls.connection.cursor()
+        cursor.execute(sql, (user_id,))
+        return cursor.fetchone()
+
+    @classmethod
+    def load_user(cls, user_id):
+        result = cls.select_user(user_id)
+        if result is None:
+            return User(user_id)
+        return User(*result)
+
+
+Database.create_table()
