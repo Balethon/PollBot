@@ -11,6 +11,12 @@ __path__ = path.dirname(__file__)
 with open(path.join(__path__, "polls.json"), encoding="utf-8") as polls_json:
     polls = load(polls_json)
 
+with open(path.join(__path__, "groups.json"), encoding="utf-8") as f:
+    groups = load(f)
+
+with open(path.join(__path__, "channels.json"), encoding="utf-8") as f:
+    channels = load(f)
+
 
 class Database:
     connection = connect("users.db")
@@ -75,6 +81,26 @@ class Database:
         if result is None:
             return User(user_id)
         return User(*result)
+
+    @staticmethod
+    def get_groups():
+        return groups
+
+    @staticmethod
+    def save_group(group):
+        groups.append(group)
+        with open(f"{__path__}/groups.json", "w") as f:
+            dump(groups, f, indent=4)
+
+    @staticmethod
+    def get_channels():
+        return channels
+
+    @staticmethod
+    def save_channel(channel):
+        channels.append(channel)
+        with open(f"{__path__}/channels.json", "w") as f:
+            dump(channels, f, indent=4)
 
 
 Database.create_table()

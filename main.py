@@ -1,7 +1,7 @@
 from time import time
 
 from balethon import Client
-from balethon.conditions import regex, at_state, text, private, group
+from balethon.conditions import regex, at_state, text, private, group, channel
 from balethon.objects import Message, CallbackQuery, User, ReplyKeyboard, ReplyKeyboardRemove
 from balethon.states import StateMachine
 
@@ -18,17 +18,24 @@ incomplete_polls = {}
 User.state_machine = StateMachine("user_states.db")
 
 
-@bot.on_message(private, chain="amar")
+@bot.on_message(private, chain="statistics")
 def private_user(message: Message):
     pass
 
 
-@bot.on_message(group, chain="amar")
+@bot.on_message(group, chain="statistics")
 def group_user(message: Message):
-    pass
+    if message.chat.id not in Database.get_groups():
+        Database.add_group(message.chat.id)
 
 
-@bot.on_callback_query(regex("^vote"), chain="amar")
+@bot.on_message(channel, chain="statistics")
+def group_user(message: Message):
+    if message.chat.id not in Database.get_channels():
+        Database.add_channel(message.chat.id)
+
+
+@bot.on_callback_query(regex("^vote"), chain="statistics")
 def voter(callback_query: CallbackQuery):
     pass
 
