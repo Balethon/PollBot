@@ -20,7 +20,7 @@ with open(path.join(__path__, "channels.json"), encoding="utf-8") as f:
 
 
 class Database:
-    connection = connect("users.db")
+    connection = connect("users.db", check_same_thread=False)
 
     @classmethod
     def create_table(cls):
