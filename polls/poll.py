@@ -1,5 +1,4 @@
 from secrets import token_hex
-from time import time
 from copy import deepcopy
 
 from balethon.objects import InlineKeyboard

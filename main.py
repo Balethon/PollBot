@@ -20,24 +20,24 @@ User.state_machine = StateMachine("user_states.db")
 
 @bot.on_message(private, chain="statistics")
 def private_user(message: Message):
-    pass
+    Database.save_user(message.author, is_member=True)
 
 
 @bot.on_message(group, chain="statistics")
 def group_user(message: Message):
     if message.chat.id not in Database.get_groups():
-        Database.add_group(message.chat.id)
+        Database.save_group(message.chat.id)
 
 
 @bot.on_message(channel, chain="statistics")
 def group_user(message: Message):
     if message.chat.id not in Database.get_channels():
-        Database.add_channel(message.chat.id)
+        Database.save_channel(message.chat.id)
 
 
 @bot.on_callback_query(regex("^vote"), chain="statistics")
 def voter(callback_query: CallbackQuery):
-    pass
+    Database.save_user(callback_query.author, is_member=True)
 
 
 @bot.on_command()

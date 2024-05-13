@@ -1,6 +1,7 @@
 from json import load, dump
 from os import path
 from sqlite3 import connect
+from time import time
 
 from balethon.objects import User
 
@@ -47,24 +48,25 @@ class Database:
         return Poll.create(**polls[code])
 
     @classmethod
-    def insert_user(cls, user):
+    def insert_user(cls, user, is_member):
         sql = """INSERT INTO users VALUES (?, ?, ?)"""
         cursor = cls.connection.cursor()
-        cursor.execute(sql, (user.id, user.first_name, user["signup_date"]))
+        signup_time = round(time()) if is_member else None
+        cursor.execute(sql, (user.id, user.first_name, signup_time))
         cls.connection.commit()
 
     @classmethod
     def update_user(cls, user):
-        sql = """UPDATE users SET first_name = ?, signup_date = ? WHERE user_id = ?"""
+        sql = """UPDATE users SET first_name = ? WHERE user_id = ?"""
         cursor = cls.connection.cursor()
-        cursor.execute(sql, (user.first_name, user["signup_date"], user.id))
+        cursor.execute(sql, (user.first_name, user.id))
         cls.connection.commit()
 
     @classmethod
-    def save_user(cls, user):
+    def save_user(cls, user, is_member):
         result = cls.select_user(user.id)
         if result is None:
-            cls.insert_user(user)
+            cls.insert_user(user, is_member)
         else:
             cls.update_user(user)
 
