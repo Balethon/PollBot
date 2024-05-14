@@ -51,6 +51,10 @@ class Poll:
     def votes_count(self):
         return len(self.voters)
 
+    @property
+    def mode_name(self):
+        return texts.anonymous if self.is_anonymous else texts.public
+
     def __init__(
             self,
             question: str,
@@ -82,12 +86,29 @@ class Poll:
 
     def __str__(self):
         options = "\n\n".join(option.to_poll(i + 1, self.get_option_percentage(i)) for i, option in enumerate(self.options))
-        return texts.poll.format(
+        poll = texts.poll.format(
             question=self.question,
             options=options,
             votes_count=self.votes_count,
             type_name=self.type_name,
+            mode_name=self.mode_name,
             code=self.code
+        )
+        return poll
+
+    def to_info(self):
+        options = "\n\n".join(option.to_poll(i + 1, self.get_option_percentage(i)) for i, option in enumerate(self.options))
+        return texts.poll_info.format(
+            question=self.question,
+            options=options,
+            votes_count=self.votes_count,
+            voters_count=self.voters_count,
+            type_name=self.type_name,
+            mode_name=self.mode_name,
+            code=self.code,
+            create_time=self.create_time,
+            link=f"https://ble.ir/VoterBot?start={self.code}",
+            command=f"/start {self.code}"
         )
 
     def vote(self, user_id, option_index):

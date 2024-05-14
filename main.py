@@ -37,7 +37,7 @@ def group_user(message: Message):
 
 @bot.on_callback_query(regex("^vote"), chain="statistics")
 def voter(callback_query: CallbackQuery):
-    Database.save_user(callback_query.author, is_member=True)
+    Database.save_user(callback_query.author, is_member=False)
 
 
 @bot.on_command()
@@ -77,6 +77,14 @@ async def help(topic=None, *, message: Message):
         await message.reply(texts.limitations)
 
 
+@bot.on_command(private)
+async def poll(poll_code, *, message: Message):
+    poll = Database.load_poll(poll_code)
+    if poll.creator != message.author.id and (poll.is_anonymous or isinstance(poll, QuizPoll)) and message.author.id not in poll.voters:
+        return
+    await message.reply(poll.to_info())
+
+
 @bot.on_message(private & regex("ایجاد نظرسنجی"))
 async def create_poll(message: Message):
     message.author.set_state("POLL_TYPE")
@@ -90,23 +98,8 @@ async def my_polls(message: Message):
     if not polls:
         return await message.reply(texts.no_polls)
 
-    reply_markup = ReplyKeyboard(*[[poll.code] for poll in polls])
-    reply_markup.add_row("برگشت")
-
-    message.author.set_state("MY_POLLS")
-    await message.reply(texts.my_polls, reply_markup)
-
-
-@bot.on_message(private & at_state("MY_POLLS"))
-async def select_poll(message: Message):
-    if message.text == "برگشت":
-        await start(message=message)
-        return
-
-    polls = Database.get_polls(message.author.id)
-    if message.text in (poll.code for poll in polls):
-        poll, = [poll for poll in polls if poll.code == message.text]
-        await message.reply(str(poll), poll.to_inline_keyboard())
+    polls = "\n\n".join(f"{poll.question}\n[/poll {poll.code}](send:/poll {poll.code})" for poll in polls)
+    await message.reply(polls)
 
 
 @bot.on_message(private & regex("راهنمایی"))
@@ -150,14 +143,14 @@ async def quiz_poll(message: Message):
 
 @bot.on_message(private & at_state("POLL_MODE") & regex("عمومی"))
 async def public_poll(message: Message):
-    incomplete_polls[message.author.id].is_anonymous = "public"
+    incomplete_polls[message.author.id].is_anonymous = False
     message.author.set_state("QUESTION")
     await message.reply(texts.give_question, ReplyKeyboardRemove())
 
 
 @bot.on_message(private & at_state("POLL_MODE") & regex("خصوصی"))
 async def anonymous_poll(message: Message):
-    incomplete_polls[message.author.id].is_anonymous = "anonymous"
+    incomplete_polls[message.author.id].is_anonymous = True
     message.author.set_state("QUESTION")
     await message.reply(texts.give_question, ReplyKeyboardRemove())
 
@@ -175,7 +168,7 @@ async def question(message: Message):
 
 
 @bot.on_message(private & at_state("OPTIONS") & text)
-async def options(message: Message):
+async def options(client: Client, message: Message):
     poll = incomplete_polls[message.author.id]
 
     if len(message.text) > 70:
@@ -193,7 +186,10 @@ async def options(message: Message):
             Database.save_poll(poll)
 
             await message.reply(str(poll), poll.to_inline_keyboard())
-            await message.reply(f"/start {poll.code}", keyboards.start)
+            await client.send_message(message.chat.id, texts.command_usage)
+            await client.send_message(message.chat.id, f"/start {poll.code}")
+            await client.send_message(message.chat.id, texts.link_usage)
+            await client.send_message(message.chat.id, f"https://ble.ir/VoterBot?start={poll.code}", keyboards.start)
             message.author.del_state()
             return
 
@@ -208,7 +204,7 @@ async def options(message: Message):
 
 
 @bot.on_message(private & at_state("EXPLANATION"))
-async def explanation(message: Message):
+async def explanation(client: Client, message: Message):
     poll = incomplete_polls[message.author.id]
 
     poll.explanation = message.text
@@ -216,6 +212,10 @@ async def explanation(message: Message):
     Database.save_poll(poll)
 
     await message.reply(str(poll), poll.to_inline_keyboard())
+    await client.send_message(message.chat.id, texts.command_usage)
+    await client.send_message(message.chat.id, f"/start {poll.code}")
+    await client.send_message(message.chat.id, texts.link_usage)
+    await client.send_message(message.chat.id, f"https://ble.ir/VoterBot?start={poll.code}", keyboards.start)
     message.author.del_state()
 
 

@@ -11,6 +11,10 @@ class QuizPoll(Poll):
             return None
         return super().vote(user_id, option_index)
 
+    @property
+    def correct_option_number(self):
+        return self.correct_option + 1
+
     def __init__(
             self,
             correct_option: int = 0,
@@ -21,3 +25,9 @@ class QuizPoll(Poll):
         self.correct_option = correct_option
         self.explanation = explanation
         super().__init__(*args, **kwargs)
+
+    def to_info(self):
+        return super().to_info() + "\n\n" + texts.quiz_poll_info.format(
+            correct_option=self.correct_option_number,
+            explanation=self.explanation
+        )

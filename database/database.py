@@ -24,7 +24,7 @@ class Database:
 
     @classmethod
     def create_table(cls):
-        sql = """CREATE TABLE IF NOT EXISTS users(user_id INTEGER PRIMARY KEY, signup_time INTEGER, first_name TEXT)"""
+        sql = """CREATE TABLE IF NOT EXISTS users(user_id INTEGER PRIMARY KEY, first_name TEXT, signup_time INTEGER)"""
         cursor = cls.connection.cursor()
         cursor.execute(sql)
         cls.connection.commit()
