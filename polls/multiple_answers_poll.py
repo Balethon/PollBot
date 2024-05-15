@@ -15,3 +15,8 @@ class MultipleAnswersPoll(Poll):
             return False
         option.voters.append(user_id)
         return True
+
+    def to_info(self):
+        return super().to_info() + "\n\n" + texts.multiple_answers_poll_info.format(
+
+        )

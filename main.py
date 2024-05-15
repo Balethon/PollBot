@@ -2,7 +2,7 @@ from time import time
 
 from balethon import Client
 from balethon.conditions import regex, at_state, text, private, group, channel
-from balethon.objects import Message, CallbackQuery, User, ReplyKeyboard, ReplyKeyboardRemove
+from balethon.objects import Message, CallbackQuery, User, ReplyKeyboardRemove
 from balethon.states import StateMachine
 
 import config
@@ -41,12 +41,12 @@ def voter(callback_query: CallbackQuery):
 
 
 @bot.on_command()
-async def start(poll_code=None, *, message: Message):
+async def start(poll_code=None, *, client: Client, message: Message):
     if poll_code is not None:
         poll = Database.load_poll(poll_code)
         if poll.creator != message.author.id and poll.is_anonymous:
             return
-        await message.reply(str(poll), poll.to_inline_keyboard())
+        await client.send_message(message.chat.id, str(poll), poll.to_inline_keyboard())
 
     elif message.chat.type == "private":
         await message.reply(texts.start.format(user=message.author), keyboards.start)
@@ -114,7 +114,7 @@ async def support(message: Message):
 
 @bot.on_message(private & regex("تعرفه تبلیغات"))
 async def ads(message: Message):
-    await message.reply(texts.ads)
+    await message.reply_photo(config.ADS_FILE_ID, caption=texts.ads)
 
 
 @bot.on_message(private & at_state("POLL_TYPE") & regex("نظرسنجی عادی"))

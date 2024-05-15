@@ -1,5 +1,6 @@
 from secrets import token_hex
 from copy import deepcopy
+from datetime import datetime
 
 from balethon.objects import InlineKeyboard
 
@@ -55,6 +56,11 @@ class Poll:
     def mode_name(self):
         return texts.anonymous if self.is_anonymous else texts.public
 
+    @property
+    def formatted_create_time(self):
+        date_time = datetime.fromtimestamp(self.create_time)
+        return date_time.strftime("%d/%m/%Y, %H:%M:%S")
+
     def __init__(
             self,
             question: str,
@@ -102,13 +108,12 @@ class Poll:
             question=self.question,
             options=options,
             votes_count=self.votes_count,
-            voters_count=self.voters_count,
             type_name=self.type_name,
             mode_name=self.mode_name,
             code=self.code,
-            create_time=self.create_time,
+            create_time=self.formatted_create_time,
             link=f"https://ble.ir/VoterBot?start={self.code}",
-            command=f"/start {self.code}"
+            command=f"[/start {self.code}](send:/start {self.code})"
         )
 
     def vote(self, user_id, option_index):
