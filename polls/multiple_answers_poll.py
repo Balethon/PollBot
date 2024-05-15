@@ -18,5 +18,5 @@ class MultipleAnswersPoll(Poll):
 
     def to_info(self):
         return super().to_info() + "\n\n" + texts.multiple_answers_poll_info.format(
-
+            voters_count=self.voters_count
         )

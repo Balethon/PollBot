@@ -2,7 +2,7 @@ from time import time
 
 from balethon import Client
 from balethon.conditions import regex, at_state, text, private, group, channel
-from balethon.objects import Message, CallbackQuery, User, ReplyKeyboardRemove
+from balethon.objects import Message, CallbackQuery, User, ReplyKeyboardRemove, InlineKeyboard
 from balethon.states import StateMachine
 
 import config
@@ -16,6 +16,16 @@ bot = Client(config.TOKEN)
 incomplete_polls = {}
 
 User.state_machine = StateMachine("user_states.db")
+
+
+@bot.on_message(private, chain="print")
+def show_private(message: Message):
+    print(f"[PRIVATE] {message.author.full_name}: {message.text}")
+
+
+@bot.on_callback_query(regex("^vote"), chain="print")
+def show_vote(callback_query: CallbackQuery):
+    print(f"[VOTE] {callback_query.author.full_name}: {callback_query.data}")
 
 
 @bot.on_message(private, chain="statistics")
@@ -80,9 +90,16 @@ async def help(topic=None, *, message: Message):
 @bot.on_command(private)
 async def poll(poll_code, *, message: Message):
     poll = Database.load_poll(poll_code)
+
     if poll.creator != message.author.id and (poll.is_anonymous or isinstance(poll, QuizPoll)) and message.author.id not in poll.voters:
         return
-    await message.reply(poll.to_info())
+
+    if poll.creator == message.author.id and not poll.is_closed:
+        reply_markup = InlineKeyboard([("بستن نظرسنجی", f"close.{poll.code}")])
+    else:
+        reply_markup = None
+
+    await message.reply(poll.to_info(), reply_markup)
 
 
 @bot.on_message(private & regex("ایجاد نظرسنجی"))
@@ -98,7 +115,7 @@ async def my_polls(message: Message):
     if not polls:
         return await message.reply(texts.no_polls)
 
-    polls = "\n\n".join(f"{poll.question}\n[/poll {poll.code}](send:/poll {poll.code})" for poll in polls)
+    polls = texts.my_polls + "\n\n" + "\n\n".join(f"💠 * [{poll.type_name} - {poll.mode_name}) {poll.question}](send:/poll {poll.code}) *" for poll in polls)
     await message.reply(polls)
 
 
@@ -159,7 +176,7 @@ async def anonymous_poll(message: Message):
 async def question(message: Message):
     poll = incomplete_polls[message.author.id]
 
-    if len(message.text) > 255:
+    if len(message.text) > 256:
         return await message.reply(texts.question_too_long)
 
     poll.question = " ".join(message.text.split())
@@ -171,41 +188,46 @@ async def question(message: Message):
 async def options(client: Client, message: Message):
     poll = incomplete_polls[message.author.id]
 
-    if len(message.text) > 70:
+    if len(message.text) > 64:
         return await message.reply(texts.option_too_long)
 
-    if len(poll.options) >= 1:
-        if message.text == "تکمیل نظرسنجی ☑️":
-            if isinstance(poll, QuizPoll):
-                message.author.set_state("SELECTING_CORRECT_OPTION")
-                await message.reply(texts.select_correct_option, ReplyKeyboardRemove())
-                await message.reply("گزینه ها", poll.to_inline_keyboard("correct"))
-                return
+    if (len(poll.options) >= 2 and message.text == "تکمیل نظرسنجی ☑️") or len(poll.options) >= 9:
+        if message.text != "تکمیل نظرسنجی ☑️":
+            poll.add_option(message.text)
 
-            poll.create_time = round(time())
-            Database.save_poll(poll)
-
-            await message.reply(str(poll), poll.to_inline_keyboard())
-            await client.send_message(message.chat.id, texts.command_usage)
-            await client.send_message(message.chat.id, f"/start {poll.code}")
-            await client.send_message(message.chat.id, texts.link_usage)
-            await client.send_message(message.chat.id, f"https://ble.ir/VoterBot?start={poll.code}", keyboards.start)
-            message.author.del_state()
+        if isinstance(poll, QuizPoll):
+            message.author.set_state("SELECTING_CORRECT_OPTION")
+            await message.reply(texts.select_correct_option, ReplyKeyboardRemove())
+            await message.reply("گزینه ها", poll.to_inline_keyboard("correct"))
             return
 
+        poll.create_time = round(time())
+        Database.save_poll(poll)
+
+        await message.reply(str(poll), poll.to_inline_keyboard())
+        await client.send_message(message.chat.id, texts.command_usage)
+        await client.send_message(message.chat.id, f"/start {poll.code}")
+        await client.send_message(message.chat.id, texts.link_usage)
+        await client.send_message(message.chat.id, f"https://ble.ir/VoterBot?start={poll.code}", keyboards.start)
+        message.author.del_state()
+        return
+
+    if len(poll.options) >= 1:
         poll.add_option(message.text)
         options = "\n".join(f"• _{option.text}_" for option in poll.options)
         await message.reply(texts.more_options.format(options=options), keyboards.complete_poll)
         return
 
     poll.add_option(message.text)
-
     await message.reply(texts.give_second_option)
 
 
 @bot.on_message(private & at_state("EXPLANATION"))
 async def explanation(client: Client, message: Message):
     poll = incomplete_polls[message.author.id]
+
+    if len(message.text) > 128:
+        return await message.reply(texts.explanation_too_long)
 
     poll.explanation = message.text
     poll.create_time = round(time())
@@ -243,6 +265,18 @@ async def vote(callback_query: CallbackQuery):
     Database.save_poll(poll)
 
     await callback_query.message.edit_text(str(poll), poll.to_inline_keyboard())
+
+
+@bot.on_callback_query(regex("^close"))
+async def close(callback_query: CallbackQuery):
+    _, code = callback_query.data.split(".")
+
+    poll = Database.load_poll(code)
+
+    poll.is_closed = True
+    Database.save_poll(poll)
+
+    await callback_query.message.edit_text(poll.to_info())
 
 
 if __name__ == "__main__":

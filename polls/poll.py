@@ -61,6 +61,10 @@ class Poll:
         date_time = datetime.fromtimestamp(self.create_time)
         return date_time.strftime("%d/%m/%Y, %H:%M:%S")
 
+    @property
+    def status(self):
+        return texts.closed if self.is_closed else texts.opened
+
     def __init__(
             self,
             question: str,
@@ -91,7 +95,7 @@ class Poll:
             return 0
 
     def __str__(self):
-        options = "\n\n".join(option.to_poll(i + 1, self.get_option_percentage(i)) for i, option in enumerate(self.options))
+        options = "\n\n".join(option.to_anonymous_poll(i + 1, self.get_option_percentage(i)) for i, option in enumerate(self.options))
         poll = texts.poll.format(
             question=self.question,
             options=options,
@@ -100,10 +104,15 @@ class Poll:
             mode_name=self.mode_name,
             code=self.code
         )
+        if self.is_closed:
+            poll += f"\n\n{texts.poll_is_closed}"
         return poll
 
     def to_info(self):
-        options = "\n\n".join(option.to_poll(i + 1, self.get_option_percentage(i)) for i, option in enumerate(self.options))
+        if self.is_anonymous:
+            options = "\n\n".join(option.to_anonymous_poll(i + 1, self.get_option_percentage(i)) for i, option in enumerate(self.options))
+        else:
+            options = "\n\n".join(option.to_public_poll(i + 1, self.get_option_percentage(i)) for i, option in enumerate(self.options))
         return texts.poll_info.format(
             question=self.question,
             options=options,
@@ -113,7 +122,8 @@ class Poll:
             code=self.code,
             create_time=self.formatted_create_time,
             link=f"https://ble.ir/VoterBot?start={self.code}",
-            command=f"[/start {self.code}](send:/start {self.code})"
+            command=f"[/start {self.code}](send:/start {self.code})",
+            status=self.status
         )
 
     def vote(self, user_id, option_index):

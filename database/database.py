@@ -78,11 +78,24 @@ class Database:
         return cursor.fetchone()
 
     @classmethod
+    def select_users(cls, user_ids):
+        sql = f"""SELECT * FROM users WHERE user_id in ({", ".join(map(str, user_ids))})"""
+        cursor = cls.connection.cursor()
+        cursor.execute(sql)
+        return cursor.fetchall()
+
+    @classmethod
     def load_user(cls, user_id):
-        result = cls.select_user(user_id)
-        if result is None:
+        user = cls.select_user(user_id)
+        if user is None:
             return User(user_id)
-        return User(*result)
+        return User(id=user[0], first_name=user[1], signup_time=user[2])
+
+    @classmethod
+    def load_users(cls, user_ids):
+        result = cls.select_users(user_ids)
+        result = [User(id=user[0], first_name=user[1], signup_time=user[2]) for user in result]
+        return result
 
     @staticmethod
     def get_groups():
