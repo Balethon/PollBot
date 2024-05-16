@@ -23,6 +23,11 @@ def show_private(message: Message):
     print(f"[PRIVATE] {message.author.full_name}: {message.text}")
 
 
+@bot.on_message(group, chain="print")
+def show_group(message: Message):
+    print(f"[GROUP] {message.author.full_name}: {message.text}")
+
+
 @bot.on_callback_query(regex("^vote"), chain="print")
 def show_vote(callback_query: CallbackQuery):
     print(f"[VOTE] {callback_query.author.full_name}: {callback_query.data}")
@@ -95,7 +100,7 @@ async def poll(poll_code, *, message: Message):
         return
 
     if poll.creator == message.author.id and not poll.is_closed:
-        reply_markup = InlineKeyboard([("بستن نظرسنجی", f"close.{poll.code}")])
+        reply_markup = InlineKeyboard([("متوقف کردن نظرسنجی", f"close.{poll.code}")])
     else:
         reply_markup = None
 
