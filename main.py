@@ -1,9 +1,9 @@
 from time import time
 
 from balethon import Client
-from balethon.conditions import regex, at_state, text, private, group, channel, author
+from balethon.conditions import regex, at_state, text, private, author
 from balethon.objects import Message, CallbackQuery, User, ReplyKeyboardRemove, InlineKeyboard
-from balethon.dispatcher import monitoring_chain, Chain
+from balethon.dispatcher import MonitoringChain
 from balethon.states import StateMachine
 
 import config
@@ -11,36 +11,13 @@ import texts
 import keyboards
 from database import Database
 from polls import Poll, QuizPoll
+from statistics_chain import statistics_chain
 
 bot = Client(config.TOKEN)
 
 incomplete_polls = {}
 
 User.state_machine = StateMachine("user_states.db")
-
-statistics_chain = Chain("statistics")
-
-
-@statistics_chain.on_message(private)
-def private_user(message: Message):
-    Database.save_user(message.author, is_member=True)
-
-
-@statistics_chain.on_message(group)
-def group_user(message: Message):
-    if message.chat.id not in Database.get_groups():
-        Database.save_group(message.chat.id)
-
-
-@statistics_chain.on_message(channel)
-def group_user(message: Message):
-    if message.chat.id not in Database.get_channels():
-        Database.save_channel(message.chat.id)
-
-
-@statistics_chain.on_callback_query(regex("^vote"))
-def voter(callback_query: CallbackQuery):
-    Database.save_user(callback_query.author, is_member=False)
 
 
 @bot.on_command()
@@ -114,8 +91,8 @@ async def my_polls(message: Message):
 
 
 @bot.on_message(private & at_state(None) & regex("راهنمایی"))
-async def guide(message: Message):
-    await help_(message=message)
+async def guide(client: Client, message: Message):
+    await help_(client=client, message=message)
 
 
 @bot.on_message(private & at_state(None) & regex("پشتیبانی"))
@@ -356,5 +333,5 @@ async def close(callback_query: CallbackQuery):
 
 
 if __name__ == "__main__":
-    bot.include(monitoring_chain, statistics_chain)
+    bot.include(MonitoringChain(), statistics_chain)
     bot.run()
