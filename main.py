@@ -118,16 +118,16 @@ async def private_forward(message: Message):
 
 
 @bot.on_message(private & at_state("GIVE_PRIVATE_FORWARD_MESSAGE"))
-def private_forward(message: Message):
+async def private_forward(message: Message):
     users = Database.load_users()
 
-    message.reply(texts.sending_started)
+    await message.reply(texts.sending_started)
 
     count = 0
 
     for user in users:
         try:
-            message.forward(user.id)
+            await message.forward(user.id)
         except Exception as e:
             print(e)
         else:
@@ -135,7 +135,7 @@ def private_forward(message: Message):
             print(f"{user.id} Successful")
 
     message.author.del_state()
-    message.reply(texts.sending_finished.format(success_count=count))
+    await message.reply(texts.sending_finished.format(success_count=count))
 
 
 @bot.on_message(private & at_state("ADMINS_PANEL") & regex("فوروارد به گروه ها"))
@@ -145,19 +145,19 @@ async def group_forward(message: Message):
 
 
 @bot.on_message(private & at_state("GIVE_GROUP_FORWARD_MESSAGE"))
-def private_forward(message: Message):
+async def private_forward(message: Message):
     groups = Database.get_groups()
 
-    message.reply(texts.sending_started)
+    await message.reply(texts.sending_started)
 
     count = 0
 
     for group_id in groups:
         try:
-            group = bot.get_chat(group_id)
+            group = await bot.get_chat(group_id)
             if group.type != "group":
                 continue
-            message.forward(group_id)
+            await message.forward(group_id)
         except Exception as e:
             print(e)
         else:
@@ -165,7 +165,7 @@ def private_forward(message: Message):
             print(f"{group_id} Successful")
 
     message.author.del_state()
-    message.reply(texts.sending_finished.format(success_count=count))
+    await message.reply(texts.sending_finished.format(success_count=count))
 
 
 @bot.on_message(private & at_state("ADMINS_PANEL") & regex("آمار"))
