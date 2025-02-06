@@ -1,8 +1,9 @@
 from time import time
 
 from balethon import Client
-from balethon.conditions import regex, at_state, text, private, group, channel
+from balethon.conditions import regex, at_state, text, private, group, channel, author
 from balethon.objects import Message, CallbackQuery, User, ReplyKeyboardRemove, InlineKeyboard
+from balethon.dispatcher import monitoring_chain, Chain
 from balethon.states import StateMachine
 
 import config
@@ -17,40 +18,27 @@ incomplete_polls = {}
 
 User.state_machine = StateMachine("user_states.db")
 
-
-@bot.on_message(private, chain="print")
-def show_private(message: Message):
-    print(f"[PRIVATE] {message.author.full_name}: {message.text}")
+statistics_chain = Chain("statistics")
 
 
-@bot.on_message(group, chain="print")
-def show_group(message: Message):
-    print(f"[GROUP] {message.author.full_name}: {message.text}")
-
-
-@bot.on_callback_query(regex("^vote"), chain="print")
-def show_vote(callback_query: CallbackQuery):
-    print(f"[VOTE] {callback_query.author.full_name}: {callback_query.data}")
-
-
-@bot.on_message(private, chain="statistics")
+@statistics_chain.on_message(private)
 def private_user(message: Message):
     Database.save_user(message.author, is_member=True)
 
 
-@bot.on_message(group, chain="statistics")
+@statistics_chain.on_message(group)
 def group_user(message: Message):
     if message.chat.id not in Database.get_groups():
         Database.save_group(message.chat.id)
 
 
-@bot.on_message(channel, chain="statistics")
+@statistics_chain.on_message(channel)
 def group_user(message: Message):
     if message.chat.id not in Database.get_channels():
         Database.save_channel(message.chat.id)
 
 
-@bot.on_callback_query(regex("^vote"), chain="statistics")
+@statistics_chain.on_callback_query(regex("^vote"))
 def voter(callback_query: CallbackQuery):
     Database.save_user(callback_query.author, is_member=False)
 
@@ -64,7 +52,8 @@ async def start(poll_code=None, *, client: Client, message: Message):
         await client.send_message(message.chat.id, str(poll), poll.to_inline_keyboard())
 
     elif message.chat.type == "private":
-        await message.reply(texts.start.format(user=message.author), keyboards.start)
+        reply_markup = keyboards.admin_start if message.author.id in config.ADMINS else keyboards.start
+        await message.reply(texts.start.format(user=message.author), reply_markup)
         if message.author.get_state():
             message.author.del_state()
 
@@ -72,8 +61,8 @@ async def start(poll_code=None, *, client: Client, message: Message):
         await message.reply(texts.start_group.format(user=message.author))
 
 
-@bot.on_command()
-async def help(topic=None, *, message: Message):
+@bot.on_command(name="help")
+async def help_(topic=None, *, message: Message):
     if topic is None:
         await message.reply(texts.help)
     elif topic == "invite_to_chat":
@@ -107,13 +96,13 @@ async def poll(poll_code, *, message: Message):
     await message.reply(poll.to_info(), reply_markup)
 
 
-@bot.on_message(private & regex("ایجاد نظرسنجی"))
+@bot.on_message(private & at_state(None) & regex("ایجاد نظرسنجی"))
 async def create_poll(message: Message):
     message.author.set_state("POLL_TYPE")
     await message.reply(texts.select_poll_type, keyboards.poll_types)
 
 
-@bot.on_message(private & regex("نظرسنجی های من"))
+@bot.on_message(private & at_state(None) & regex("نظرسنجی های من"))
 async def my_polls(message: Message):
     polls = Database.get_polls(message.author.id)
 
@@ -124,19 +113,99 @@ async def my_polls(message: Message):
     await message.reply(polls)
 
 
-@bot.on_message(private & regex("راهنمایی"))
-async def help_(message: Message):
-    await help(message=message)
+@bot.on_message(private & at_state(None) & regex("راهنمایی"))
+async def guide(message: Message):
+    await help_(message=message)
 
 
-@bot.on_message(private & regex("پشتیبانی"))
+@bot.on_message(private & at_state(None) & regex("پشتیبانی"))
 async def support(message: Message):
     await message.reply(texts.support)
 
 
-@bot.on_message(private & regex("تعرفه تبلیغات"))
+@bot.on_message(private & at_state(None) & regex("تعرفه تبلیغات"))
 async def ads(message: Message):
     await message.reply_photo(config.ADS_FILE_ID, caption=texts.ads)
+
+
+@bot.on_message(private & at_state(None) & regex("پنل ادمین ها") & author(*config.ADMINS))
+async def admins_panel(message: Message):
+    message.author.set_state("ADMINS_PANEL")
+    await message.reply(texts.admins_panel, keyboards.admins_panel)
+
+
+@bot.on_message(private & at_state("ADMINS_PANEL") & regex("فوروارد به پیوی ها"))
+async def private_forward(message: Message):
+    message.author.set_state("GIVE_PRIVATE_FORWARD_MESSAGE")
+    await message.reply(texts.give_message)
+
+
+@bot.on_message(private & at_state("GIVE_PRIVATE_FORWARD_MESSAGE"))
+def private_forward(message: Message):
+    users = Database.load_users()
+
+    message.reply(texts.sending_started)
+
+    count = 0
+
+    for user in users:
+        try:
+            message.forward(user.id)
+        except Exception as e:
+            print(e)
+        else:
+            count += 1
+            print(f"{user.id} Successful")
+
+    message.author.del_state()
+    message.reply(texts.sending_finished.format(success_count=count))
+
+
+@bot.on_message(private & at_state("ADMINS_PANEL") & regex("فوروارد به گروه ها"))
+async def group_forward(message: Message):
+    message.author.set_state("GIVE_GROUP_FORWARD_MESSAGE")
+    await message.reply(texts.give_message)
+
+
+@bot.on_message(private & at_state("GIVE_GROUP_FORWARD_MESSAGE"))
+def private_forward(message: Message):
+    groups = Database.get_groups()
+
+    message.reply(texts.sending_started)
+
+    count = 0
+
+    for group_id in groups:
+        try:
+            group = bot.get_chat(group_id)
+            if group.type != "group":
+                continue
+            message.forward(group_id)
+        except Exception as e:
+            print(e)
+        else:
+            count += 1
+            print(f"{group_id} Successful")
+
+    message.author.del_state()
+    message.reply(texts.sending_finished.format(success_count=count))
+
+
+@bot.on_message(private & at_state("ADMINS_PANEL") & regex("آمار"))
+async def statistics(message: Message):
+    users = Database.load_users()
+    polls = Database.get_polls()
+    groups = Database.get_groups()
+    channels = Database.get_channels()
+    await message.reply(
+        texts.statistics.format(
+            polls=len(polls),
+            users=len(users),
+            members=len([user for user in users if user["signup_time"]]),
+            groups=len(groups),
+            channels=len(channels)
+        )
+    )
 
 
 @bot.on_message(private & at_state("POLL_TYPE") & regex("نظرسنجی عادی"))
@@ -213,7 +282,8 @@ async def options(client: Client, message: Message):
         await client.send_message(message.chat.id, texts.command_usage)
         await client.send_message(message.chat.id, f"/start {poll.code}")
         await client.send_message(message.chat.id, texts.link_usage)
-        await client.send_message(message.chat.id, f"https://ble.ir/VoterBot?start={poll.code}", keyboards.start)
+        reply_markup = keyboards.admin_start if message.author.id in config.ADMINS else keyboards.start
+        await client.send_message(message.chat.id, f"https://ble.ir/VoterBot?start={poll.code}", reply_markup)
         message.author.del_state()
         return
 
@@ -242,7 +312,8 @@ async def explanation(client: Client, message: Message):
     await client.send_message(message.chat.id, texts.command_usage)
     await client.send_message(message.chat.id, f"/start {poll.code}")
     await client.send_message(message.chat.id, texts.link_usage)
-    await client.send_message(message.chat.id, f"https://ble.ir/VoterBot?start={poll.code}", keyboards.start)
+    reply_markup = keyboards.admin_start if message.author.id in config.ADMINS else keyboards.start
+    await client.send_message(message.chat.id, f"https://ble.ir/VoterBot?start={poll.code}", reply_markup)
     message.author.del_state()
 
 
@@ -285,4 +356,5 @@ async def close(callback_query: CallbackQuery):
 
 
 if __name__ == "__main__":
+    bot.include(monitoring_chain, statistics_chain)
     bot.run()

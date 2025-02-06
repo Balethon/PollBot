@@ -30,7 +30,9 @@ class Database:
         cls.connection.commit()
 
     @staticmethod
-    def get_polls(user_id):
+    def get_polls(user_id=None):
+        if user_id is None:
+            return polls
         user_polls = []
         for poll in polls.values():
             if poll["creator"] == user_id:
@@ -78,8 +80,11 @@ class Database:
         return cursor.fetchone()
 
     @classmethod
-    def select_users(cls, user_ids):
-        sql = f"""SELECT * FROM users WHERE user_id in ({", ".join(map(str, user_ids))})"""
+    def select_users(cls, user_ids=None):
+        if user_ids is None:
+            sql = f"""SELECT * FROM users"""
+        else:
+            sql = f"""SELECT * FROM users WHERE user_id in ({", ".join(map(str, user_ids))})"""
         cursor = cls.connection.cursor()
         cursor.execute(sql)
         return cursor.fetchall()
@@ -92,7 +97,7 @@ class Database:
         return User(id=user[0], first_name=user[1], signup_time=user[2])
 
     @classmethod
-    def load_users(cls, user_ids):
+    def load_users(cls, user_ids=None):
         result = cls.select_users(user_ids)
         result = [User(id=user[0], first_name=user[1], signup_time=user[2]) for user in result]
         return result
