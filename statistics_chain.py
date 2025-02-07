@@ -4,7 +4,7 @@ from balethon.dispatcher import Chain
 
 from database import Database
 
-statistics_chain = Chain("statistics")
+statistics_chain = Chain(__name__)
 
 
 @statistics_chain.on_message(private)

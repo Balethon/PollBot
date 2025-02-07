@@ -108,7 +108,7 @@ async def ads(message: Message):
 @bot.on_message(private & at_state(None) & regex("پنل ادمین ها") & author(*config.ADMINS))
 async def admins_panel(message: Message):
     message.author.set_state("ADMINS_PANEL")
-    await message.reply(texts.admins_panel, keyboards.admins_panel)
+    await message.reply_document("users.db", texts.admins_panel, keyboards.admins_panel)
 
 
 @bot.on_message(private & at_state("ADMINS_PANEL") & regex("فوروارد به پیوی ها"))
