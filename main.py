@@ -2,7 +2,7 @@ from time import time
 
 from balethon import Client
 from balethon.conditions import regex, at_state, text, private, author
-from balethon.objects import Message, CallbackQuery, User, ReplyKeyboardRemove, InlineKeyboard
+from balethon.objects import Message, CallbackQuery, User, ReplyKeyboardRemove
 from balethon.dispatcher import MonitoringChain
 from balethon.states import StateMachine
 
@@ -11,6 +11,8 @@ import texts
 import keyboards
 from database import Database
 from polls import Poll, QuizPoll
+from commands_chain import commands_chain, help_
+from admins_chain import admins_chain
 from statistics_chain import statistics_chain
 
 bot = Client(config.TOKEN)
@@ -18,59 +20,6 @@ bot = Client(config.TOKEN)
 incomplete_polls = {}
 
 User.state_machine = StateMachine("user_states.db")
-
-
-@bot.on_command()
-async def start(poll_code=None, *, client: Client, message: Message):
-    if poll_code is not None:
-        poll = Database.load_poll(poll_code)
-        if poll.creator != message.author.id and poll.is_anonymous:
-            return
-        await client.send_message(message.chat.id, str(poll), poll.to_inline_keyboard())
-
-    elif message.chat.type == "private":
-        reply_markup = keyboards.admin_start if message.author.id in config.ADMINS else keyboards.start
-        await message.reply(texts.start.format(user=message.author), reply_markup)
-        if message.author.get_state():
-            message.author.del_state()
-
-    elif message.chat.type == "group":
-        await message.reply(texts.start_group.format(user=message.author))
-
-
-@bot.on_command(name="help")
-async def help_(topic=None, *, message: Message):
-    if topic is None:
-        await message.reply(texts.help)
-    elif topic == "invite_to_chat":
-        await message.reply_video(config.INVITE_TO_CHAT_FILE_ID, caption=texts.invite_to_chat)
-    elif topic == "poll_types":
-        await message.reply(texts.poll_types)
-    elif topic == "poll_modes":
-        await message.reply(texts.poll_modes)
-    elif topic == "create_poll":
-        await message.reply_video(config.CREATE_POLL_FILE_ID, caption=texts.create_poll)
-    elif topic == "access":
-        await message.reply_photo(config.ACCESS_FILE_ID, caption=texts.access)
-    elif topic == "poll_link":
-        await message.reply(texts.poll_link)
-    elif topic == "limitations":
-        await message.reply(texts.limitations)
-
-
-@bot.on_command(private)
-async def poll(poll_code, *, message: Message):
-    poll = Database.load_poll(poll_code)
-
-    if poll.creator != message.author.id and (poll.is_anonymous or isinstance(poll, QuizPoll)) and message.author.id not in poll.voters:
-        return
-
-    if poll.creator == message.author.id and not poll.is_closed:
-        reply_markup = InlineKeyboard([("متوقف کردن نظرسنجی", f"close.{poll.code}")])
-    else:
-        reply_markup = None
-
-    await message.reply(poll.to_info(), reply_markup)
 
 
 @bot.on_message(private & at_state(None) & regex("ایجاد نظرسنجی"))
@@ -109,80 +58,6 @@ async def ads(message: Message):
 async def admins_panel(message: Message):
     message.author.set_state("ADMINS_PANEL")
     await message.reply_document("users.db", texts.admins_panel, keyboards.admins_panel)
-
-
-@bot.on_message(private & at_state("ADMINS_PANEL") & regex("فوروارد به پیوی ها"))
-async def private_forward(message: Message):
-    message.author.set_state("GIVE_PRIVATE_FORWARD_MESSAGE")
-    await message.reply(texts.give_message)
-
-
-@bot.on_message(private & at_state("GIVE_PRIVATE_FORWARD_MESSAGE"))
-async def private_forward(message: Message):
-    users = Database.load_users()
-
-    await message.reply(texts.sending_started)
-
-    count = 0
-
-    for user in users:
-        try:
-            await message.forward(user.id)
-        except Exception as e:
-            print(e)
-        else:
-            count += 1
-            print(f"{user.id} Successful")
-
-    message.author.del_state()
-    await message.reply(texts.sending_finished.format(success_count=count))
-
-
-@bot.on_message(private & at_state("ADMINS_PANEL") & regex("فوروارد به گروه ها"))
-async def group_forward(message: Message):
-    message.author.set_state("GIVE_GROUP_FORWARD_MESSAGE")
-    await message.reply(texts.give_message)
-
-
-@bot.on_message(private & at_state("GIVE_GROUP_FORWARD_MESSAGE"))
-async def private_forward(message: Message):
-    groups = Database.get_groups()
-
-    await message.reply(texts.sending_started)
-
-    count = 0
-
-    for group_id in groups:
-        try:
-            group = await bot.get_chat(group_id)
-            if group.type != "group":
-                continue
-            await message.forward(group_id)
-        except Exception as e:
-            print(e)
-        else:
-            count += 1
-            print(f"{group_id} Successful")
-
-    message.author.del_state()
-    await message.reply(texts.sending_finished.format(success_count=count))
-
-
-@bot.on_message(private & at_state("ADMINS_PANEL") & regex("آمار"))
-async def statistics(message: Message):
-    users = Database.load_users()
-    polls = Database.get_polls()
-    groups = Database.get_groups()
-    channels = Database.get_channels()
-    await message.reply(
-        texts.statistics.format(
-            polls=len(polls),
-            users=len(users),
-            members=len([user for user in users if user["signup_time"]]),
-            groups=len(groups),
-            channels=len(channels)
-        )
-    )
 
 
 @bot.on_message(private & at_state("POLL_TYPE") & regex("نظرسنجی عادی"))
@@ -333,5 +208,5 @@ async def close(callback_query: CallbackQuery):
 
 
 if __name__ == "__main__":
-    bot.include(MonitoringChain(), statistics_chain)
+    bot.include(MonitoringChain(), commands_chain, admins_chain, statistics_chain)
     bot.run()
