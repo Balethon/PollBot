@@ -11,9 +11,8 @@ import texts
 import keyboards
 from database import Database
 from polls import Poll, QuizPoll
-from commands_chain import commands_chain, help_
-from admins_chain import admins_chain
-from statistics_chain import statistics_chain
+from chains import commands_chain, admins_chain, statistics_chain
+from chains.commands_chain import help_
 
 bot = Client(config.TOKEN)
 

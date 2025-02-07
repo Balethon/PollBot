@@ -5,7 +5,7 @@ from balethon.objects import Message
 
 import texts
 from database import Database
-from commands_chain import start
+from .commands_chain import start
 
 admins_chain = Chain(__name__, condition=private)
 
